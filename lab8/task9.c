@@ -1,34 +1,48 @@
 #include <stdio.h>
 #include <pthread.h>
 
-// shared results array — safe here because each thread writes to its own index
-long results[9];
+#define NUM_THREADS 3
 
-typedef struct { int index; int value; int task; } Task;
-// task: 0=square, 1=cube, 2=factorial
+// ── Shared results array — written by threads, read by main ──────────────────
+long results[NUM_THREADS];   // results[0]=square, results[1]=cube, results[2]=factorial
 
-long factorial(int n) { return n <= 1 ? 1 : n * factorial(n - 1); }
+int n = 5;  // the number to process
 
-void *process(void *arg) {
-    Task *t = (Task *)arg;
-    if      (t->task == 0) results[t->index] = (long)t->value * t->value;
-    else if (t->task == 1) results[t->index] = (long)t->value * t->value * t->value;
-    else                   results[t->index] = factorial(t->value);
+// ── Thread functions — each writes to its own slot, no overlap ────────────────
+void *calc_square(void *arg) {
+    results[0] = (long)n * n;
     return NULL;
 }
 
-int main() {
-    // 9 tasks: square/cube/factorial for values 3, 4, 5
-    Task tasks[9] = {
-        {0, 3, 0}, {1, 3, 1}, {2, 3, 2},
-        {3, 4, 0}, {4, 4, 1}, {5, 4, 2},
-        {6, 5, 0}, {7, 5, 1}, {8, 5, 2}
-    };
+void *calc_cube(void *arg) {
+    results[1] = (long)n * n * n;
+    return NULL;
+}
 
-    pthread_t threads[9];
-    for (int i = 0; i < 9; i++)
-        pthread_create(&threads[i], NULL, process, &tasks[i]);
-    for (int i = 0; i < 9; i++)
-        pthread_join(threads[i], NULL);
+void *calc_factorial(void *arg) {
+    long fact = 1;
+    for (int i = 2; i <= n; i++) fact *= i;
+    results[2] = fact;
+    return NULL;
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+int main() {
+    pthread_t t[NUM_THREADS];
+
+    pthread_create(&t[0], NULL, calc_square,    NULL);
+    pthread_create(&t[1], NULL, calc_cube,      NULL);
+    pthread_create(&t[2], NULL, calc_factorial, NULL);
+
+    // wait for all threads to finish writing to results[]
+    for (int i = 0; i < NUM_THREADS; i++)
+        pthread_join(t[i], NULL);
+
+    // safe to read results[] only after all joins
+    printf("n = %d\n", n);
+    printf("Square    : %ld\n", results[0]);
+    printf("Cube      : %ld\n", results[1]);
+    printf("Factorial : %ld\n", results[2]);
+
     return 0;
 }
