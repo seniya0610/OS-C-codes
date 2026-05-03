@@ -30,12 +30,5 @@ int main() {
         pthread_create(&threads[i], NULL, process, &tasks[i]);
     for (int i = 0; i < 9; i++)
         pthread_join(threads[i], NULL);
-
-    const char *names[] = {"Square", "Cube", "Factorial"};
-    for (int v = 0; v < 3; v++) {
-        int val = tasks[v * 3].value;
-        printf("n = %d → square=%-6ld cube=%-6ld factorial=%ld\n",
-               val, results[v*3], results[v*3+1], results[v*3+2]);
-    }
     return 0;
 }
